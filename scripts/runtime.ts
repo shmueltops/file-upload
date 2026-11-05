@@ -7,6 +7,7 @@ export function localRuntime(
   persist = true,
   port = 8787,
   appOrigin = 'http://127.0.0.1:5173',
+  skipScanDelay = false,
 ) {
   const common = {
     modules: true,
@@ -17,6 +18,7 @@ export function localRuntime(
     queueProducers: { JOBS: 'vault-jobs' },
     bindings: {
       LOCAL_MODE: 'true',
+      LOCAL_SKIP_SCAN_DELAY: skipScanDelay ? 'true' : 'false',
       SESSION_SECRET: secret,
       APP_ORIGIN: appOrigin,
       QUARANTINE_BUCKET: 'vault-quarantine',

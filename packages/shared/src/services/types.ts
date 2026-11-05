@@ -7,6 +7,7 @@ export interface ServiceBindings {
   JOBS: Queue<WorkMessage>;
   SESSION_SECRET: string;
   LOCAL_MODE?: string;
+  LOCAL_SKIP_SCAN_DELAY?: string;
   APP_ORIGIN: string;
   R2_ENDPOINT?: string;
   R2_ACCESS_KEY_ID?: string;

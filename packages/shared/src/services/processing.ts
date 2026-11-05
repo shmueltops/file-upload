@@ -173,7 +173,14 @@ export async function processFile(
         attemptId,
       );
       if (!reserved) throw new AppError(409, 'Processing claim was revoked.', 'claim_revoked');
-      const verdict = await scanFile(file.filename, object.size, random);
+      const verdict = await scanFile(
+        file.filename,
+        object.size,
+        random,
+        env.LOCAL_MODE === 'true' && env.LOCAL_SKIP_SCAN_DELAY === 'true'
+          ? async () => {}
+          : undefined,
+      );
       await env.DB.batch([
         env.DB.prepare(
           `UPDATE scan_attempts SET result=?,duration_ms=?,provider_response=?,finished_at=?,updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM files WHERE id=? AND claim_token=? AND delete_requested_at IS NULL)`,

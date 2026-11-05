@@ -45,11 +45,13 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm exec playwright install chromium
-# Keep pnpm dev running in another terminal:
+# Keep pnpm dev:test running in another terminal:
 pnpm test:e2e
 ```
 
 The browser suite creates disposable local QA data and exercises user creation, first-login rotation, files, folders, downloads, audit history, multipart retry, and route changes during uploads. It rotates a fresh local bootstrap password when necessary and updates `.local/admin.json` with the current local password.
+
+Use `pnpm dev:test` for automated browser tests; it bypasses the simulated scan delay in both local Workers. Unit/integration tests also skip that delay and do not assert elapsed scan time. Normal `pnpm dev` and deployed Workers retain the 10–30 second UI simulation.
 
 The full-size browser test is opt-in because it allocates a 3 GB fixture plus emulator storage. In PowerShell:
 

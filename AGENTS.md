@@ -15,6 +15,7 @@ Read `README.md`, `PLAN.md`, and `OPERATIONS.md`. Preserve the agreed stack and 
 - `pnpm typecheck`, `pnpm test`, `pnpm build`: required checks after behavior changes.
 - `pnpm format`, `pnpm format:check`: Prettier.
 - `pnpm test:e2e`: browser acceptance tests; requires a running dev server.
+- `pnpm dev:test`: local browser-test server with simulated scan latency disabled. Use it for automated tests; do not add real waits or elapsed-time assertions for the temporary scan animation. Normal development and production keep the delay.
 - `pnpm db:generate`: generate Drizzle SQL migrations; review the output.
 - `pnpm cloudflare:prepare`, `pnpm run deploy`, `pnpm bootstrap`: hosted setup. Deployment uses the `cf` CLI, not Wrangler configuration.
 - `pnpm verify:live`, `pnpm verify:r2`: actual Cloudflare integration checks. `verify:r2 --large` uses significant transfer/storage; use intentionally.

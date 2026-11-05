@@ -35,7 +35,7 @@ jobs:
       - name: Browser acceptance tests
         shell: bash
         run: |
-          pnpm dev > /tmp/file-vault-dev.log 2>&1 &
+          pnpm dev:test > /tmp/file-vault-dev.log 2>&1 &
           DEV_PID=$!
           trap 'kill "$DEV_PID" || true' EXIT
           for attempt in $(seq 1 90); do

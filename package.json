@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.15.0",
   "scripts": {
     "dev": "tsx scripts/dev.ts",
+    "dev:test": "tsx scripts/dev.ts --test",
     "build": "tsx scripts/build.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",

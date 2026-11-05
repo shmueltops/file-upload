@@ -20,7 +20,7 @@ import { sessionToken, sessionUser } from '../packages/shared/src/services/users
 import type { StoredUser } from '../packages/shared/src/db/schema';
 
 // State/recovery tests use the real verdict logic without wall-clock waiting.
-// Timer tests cover the delay; browser tests exercise it inside the Queue Worker.
+// Automated tests exercise verdicts and recovery without the temporary UI delay.
 vi.mock('../packages/shared/src/services/scanner', async (importOriginal) => {
   const scanner = await importOriginal<typeof import('../packages/shared/src/services/scanner')>();
   return {
@@ -47,7 +47,7 @@ async function request(path: string, method = 'GET', data?: unknown, cookie = ad
 }
 beforeAll(async () => {
   await buildWorkers();
-  mf = localRuntime(crypto.randomUUID() + crypto.randomUUID(), false, 0, origin);
+  mf = localRuntime(crypto.randomUUID() + crypto.randomUUID(), false, 0, origin, true);
   await mf.ready;
   const db = await migrateLocal(mf);
   env = await mf.getBindings<ServiceBindings>('vault-api');

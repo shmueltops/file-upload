@@ -23,7 +23,13 @@ try {
   await writeFile(resolve(root, '.local/admin.json'), JSON.stringify(config, null, 2));
 }
 await buildWorkers();
-const mf = localRuntime(config.secret);
+const mf = localRuntime(
+  config.secret,
+  true,
+  8787,
+  'http://127.0.0.1:5173',
+  process.argv.includes('--test'),
+);
 await mf.ready;
 const db = await migrateLocal(mf);
 if (

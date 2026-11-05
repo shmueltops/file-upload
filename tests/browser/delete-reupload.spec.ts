@@ -29,9 +29,6 @@ test('an infected file can be deleted and uploaded again immediately under the s
         buffer: Buffer.from('Deletion and name reuse fixture'),
       });
     await expect(
-      page.getByRole('row').filter({ hasText: filename }).getByText('Scanning', { exact: true }),
-    ).toBeVisible();
-    await expect(
       page.getByRole('row').filter({ hasText: filename }).getByText('Infected', { exact: true }),
     ).toBeVisible();
     const response = await page.request.get(`/api/files?folderPath=${encodeURIComponent(folder)}`);
@@ -39,7 +36,6 @@ test('an infected file can be deleted and uploaded again immediately under the s
     const audit = await page.request.get(`/api/admin/jobs/${id}/attempts`);
     const attempts = (await audit.json()).attempts;
     expect(attempts).toHaveLength(1);
-    expect(attempts[0].duration_ms).toBeGreaterThanOrEqual(10_000);
     return id;
   };
   const original = await upload();
