@@ -321,6 +321,8 @@ Explicitly configure R2 lifecycle rules to abort incomplete multipart uploads, i
 
 User-requested refinements: unfinished transfers stay in the upload panel and admin history, with My files showing a record only after complete object verification. A single-file batch has no duplicate overall progress section. ETAs use readable seconds/minutes/hours. Confirmed bytes remain internal accounting; the visible counter reports displayed transfer progress.
 
+Approved files now support a preview dialog for text, formatted Markdown, PDF, raster images, and browser-compatible video. The same authenticated streaming route accepts `preview=1` only for explicitly supported extensions; other formats stay attachments. Text/Markdown previews are capped at 2 MiB, Markdown skips raw HTML and remote images, and video retains Range support. Downloads remain available in the dialog.
+
 - File manager: breadcrumbs, folder tree/list, names, sizes, statuses, upload/file/folder controls, empty/error states, and approved download links.
 - Upload provider lives above the route outlet and owns one sequential file queue. Route changes do not recreate it.
 - Use `XMLHttpRequest.upload.onprogress` for byte-level upload events; use `File.slice()` for parts.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Folder,
@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   RefreshCw,
   ArrowUp,
+  Eye,
 } from 'lucide-react';
 import type {
   FileRecord,
@@ -24,6 +25,9 @@ import { api, bytes, changed, date, json } from '../../lib/api';
 import { collectDrop, collectFiles, useUploads, useUploadTasks } from '../uploads';
 import { FolderTree } from '../folders';
 import { LoadingIndicator, Modal, StatusBadge } from '../../components';
+import { filePreview } from '../../../../../packages/shared/src/contracts/previews';
+
+const FilePreview = lazy(() => import('./file-preview'));
 
 type Action =
   | { type: 'create' }
@@ -41,7 +45,8 @@ export function FileManager() {
     [loading, setLoading] = useState(true),
     [search, setSearch] = useState(''),
     [action, setAction] = useState<Action | null>(null),
-    [drag, setDrag] = useState(false);
+    [drag, setDrag] = useState(false),
+    [preview, setPreview] = useState<FileRecord | null>(null);
   const fileInput = useRef<HTMLInputElement>(null),
     folderInput = useRef<HTMLInputElement>(null),
     uploads = useUploads(),
@@ -307,7 +312,17 @@ export function FileManager() {
                         <Files size={21} />
                       </span>
                       <div className="min-width">
-                        <strong className="truncate">{f.filename}</strong>
+                        {f.status === 'done' && filePreview(f.filename) ? (
+                          <button
+                            className="preview-name truncate"
+                            onClick={() => setPreview(f)}
+                            title={`Preview ${f.filename}`}
+                          >
+                            {f.filename}
+                          </button>
+                        ) : (
+                          <strong className="truncate">{f.filename}</strong>
+                        )}
                         {(f.block_reason || f.last_error) && (
                           <small
                             className="error truncate"
@@ -326,6 +341,17 @@ export function FileManager() {
                   <td className="muted">{date(f.updated_at)}</td>
                   <td>
                     <div className="row-actions">
+                      {filePreview(f.filename) && (
+                        <button
+                          className="icon-button"
+                          disabled={f.status !== 'done'}
+                          title="Preview approved file"
+                          aria-label={`Preview ${f.filename}`}
+                          onClick={() => setPreview(f)}
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
                       <button
                         className="icon-button"
                         disabled={f.status !== 'done'}
@@ -418,6 +444,17 @@ export function FileManager() {
           folders={folders}
           close={() => setAction(null)}
         />
+      )}
+      {preview && (
+        <Suspense
+          fallback={
+            <Modal title={preview.filename} close={() => setPreview(null)}>
+              <LoadingIndicator>Opening preview…</LoadingIndicator>
+            </Modal>
+          }
+        >
+          <FilePreview key={preview.id} file={preview} close={() => setPreview(null)} />
+        </Suspense>
       )}
     </div>
   );

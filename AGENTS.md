@@ -24,6 +24,7 @@ Read `README.md`, `PLAN.md`, and `OPERATIONS.md`. Preserve the agreed stack and 
 - Exactly four application tables: users, folders, files, scan_attempts. No jobs or sessions table.
 - Both Workers reuse the shared services. D1 claim/state updates require generation and claim-token guards; no read-then-write claims.
 - A clean verdict belongs to an immutable source ETag. Promotion retries must not re-run the scanner or replace the approved source.
+- File previews use the authenticated clean-content route with `preview=1` and an extension allowlist shared with the UI. Keep HTML/SVG download-only, text/Markdown bounded at 2 MiB, Markdown raw HTML/remote images disabled, and media streamed with Range support. The PDF response permits same-origin object embedding for the browser's native viewer.
 - At most three scanner invocations per file lifetime; delivery/promotion/cleanup retries use separate budgets.
 - All object keys are generated IDs, never filenames or folder paths. Both buckets stay private. Admin does not bypass quarantine or user ownership.
 - Small presigned PUTs sign `If-None-Match` AND actual `x-amz-meta-*` headers; return those headers to the browser. R2 does not persist query-hoisted AWS metadata as object metadata.

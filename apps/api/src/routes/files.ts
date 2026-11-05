@@ -7,6 +7,10 @@ import {
 } from '../../../../packages/shared/src/services/files';
 import { AppError } from '../../../../packages/shared/src/services/types';
 import type { ApiEnv } from '../middleware';
+import {
+  filePreview,
+  MAX_TEXT_PREVIEW_BYTES,
+} from '../../../../packages/shared/src/contracts/previews';
 
 export const fileRoutes = new Hono<ApiEnv>();
 fileRoutes.get('/', async (c) => {
@@ -36,6 +40,18 @@ fileRoutes.get('/:id/content', async (c) => {
   const file = await ownedFile(c.env, c.get('user').id, c.req.param('id'));
   if (file.status !== 'done' || !file.clean_key || !file.clean_etag)
     throw new AppError(409, 'Only approved files are available to download.');
+  const preview = c.req.query('preview') === '1';
+  const format = preview ? filePreview(file.filename) : null;
+  if (preview && !format) throw new AppError(415, 'This format is available to download only.');
+  if (
+    format &&
+    ['text', 'markdown'].includes(format.kind) &&
+    (file.actual_size ?? file.expected_size) > MAX_TEXT_PREVIEW_BYTES
+  )
+    throw new AppError(
+      413,
+      'This text file is too large to preview. Download it to read the full file.',
+    );
   const object = await c.env.CLEAN.get(file.clean_key, {
     range: c.req.raw.headers,
     onlyIf: { etagMatches: file.clean_etag },
@@ -43,14 +59,16 @@ fileRoutes.get('/:id/content', async (c) => {
   if (!object || !('body' in object))
     throw new AppError(409, 'The approved file is currently unavailable.');
   const headers = new Headers({
-    'Content-Type': 'application/octet-stream',
-    'Content-Disposition': `attachment; filename="download"; filename*=UTF-8''${encodeURIComponent(file.filename).replaceAll("'", '%27')}`,
+    'Content-Type': format?.contentType ?? 'application/octet-stream',
+    'Content-Disposition': `${preview ? 'inline' : 'attachment'}; filename="download"; filename*=UTF-8''${encodeURIComponent(file.filename).replaceAll("'", '%27')}`,
+    'Content-Security-Policy': `default-src 'none'; script-src 'none'; object-src ${format?.kind === 'pdf' ? "'self'" : "'none'"}; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`,
     'X-Content-Type-Options': 'nosniff',
     'Cache-Control': 'private, no-store',
     'Accept-Ranges': 'bytes',
     ETag: object.httpEtag,
   });
   if (
+    c.req.header('Range') &&
     object.range &&
     'offset' in object.range &&
     'length' in object.range &&

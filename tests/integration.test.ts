@@ -225,6 +225,16 @@ describe('processing and cleanup', () => {
     );
     const download = await request(`/files/${f.id}/content`, 'GET', undefined, userCookie);
     expect(await download.text()).toBe('Hello approved world');
+    expect(download.headers.get('Content-Disposition')).toMatch(/^attachment/);
+    const preview = await request(`/files/${f.id}/content?preview=1`, 'GET', undefined, userCookie);
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
+    expect(preview.headers.get('Content-Disposition')).toMatch(/^inline/);
+    expect(preview.headers.get('Cache-Control')).toContain('no-store');
+    expect(await preview.text()).toBe('Hello approved world');
+    expect(
+      (await request(`/files/${f.id}/content?preview=1`, 'GET', undefined, adminCookie)).status,
+    ).toBe(404);
     const range = await mf.dispatchFetch(`${origin}/api/files/${f.id}/content`, {
       headers: { Cookie: userCookie, Range: 'bytes=0-4' },
     });
@@ -233,10 +243,46 @@ describe('processing and cleanup', () => {
     const attempts = await all(env.DB, 'SELECT * FROM scan_attempts WHERE file_id=?', f.id);
     expect(attempts).toHaveLength(1);
   });
+  it('streams approved media inline with range support and rejects active or oversized text previews', async () => {
+    for (const [name, type] of [
+      ['preview.png', 'image/png'],
+      ['preview.mp4', 'video/mp4'],
+      ['preview.pdf', 'application/pdf'],
+    ]) {
+      const file = await staged(name!, 'preview fixture');
+      await processFile(env, file.id, file.upload_generation, () => 1);
+      const response = await mf.dispatchFetch(`${origin}/api/files/${file.id}/content?preview=1`, {
+        headers: { Cookie: userCookie, Range: 'bytes=0-6' },
+      });
+      expect(response.status).toBe(206);
+      expect(response.headers.get('Content-Type')).toBe(type);
+      expect(response.headers.get('Content-Disposition')).toMatch(/^inline/);
+      expect(await response.text()).toBe('preview');
+    }
+    const active = await staged('active.svg', '<svg onload="alert(1)"/>');
+    await processFile(env, active.id, active.upload_generation, () => 1);
+    expect(
+      (await request(`/files/${active.id}/content?preview=1`, 'GET', undefined, userCookie)).status,
+    ).toBe(415);
+    const download = await request(`/files/${active.id}/content`, 'GET', undefined, userCookie);
+    expect(download.status).toBe(200);
+    expect(download.headers.get('Content-Type')).toBe('application/octet-stream');
+    const huge = await staged('huge-text.txt', 'a'.repeat(2 * 1024 * 1024 + 1));
+    await processFile(env, huge.id, huge.upload_generation, () => 1);
+    expect(
+      (await request(`/files/${huge.id}/content?preview=1`, 'GET', undefined, userCookie)).status,
+    ).toBe(413);
+    const hugeDownload = await request(`/files/${huge.id}/content`, 'GET', undefined, userCookie);
+    expect(hugeDownload.status).toBe(200);
+    expect((await hugeDownload.arrayBuffer()).byteLength).toBe(2 * 1024 * 1024 + 1);
+  });
   it('blocks infected downloads for users and admins and records the reason', async () => {
     const f = await staged('VIRUS.txt');
     await processFile(env, f.id, f.upload_generation);
     expect((await getFile(env, f.id))!.block_reason).toBe('virus in name');
+    expect(
+      (await request(`/files/${f.id}/content?preview=1`, 'GET', undefined, userCookie)).status,
+    ).toBe(409);
     expect((await request(`/files/${f.id}/download`, 'GET', undefined, userCookie)).status).toBe(
       409,
     );
