@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>File Vault</title>
+  <rect width="64" height="64" rx="14" fill="#244b67"/>
+  <path d="M29 46H16a4 4 0 0 1-4-4V20a4 4 0 0 1 4-4h11l6 7h14a4 4 0 0 1 4 4v4" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="34" y="39" width="21" height="16" rx="3" fill="#a8d8e5"/>
+  <path d="M39 39v-4a5.5 5.5 0 0 1 11 0v4" fill="none" stroke="#a8d8e5" stroke-width="4" stroke-linecap="round"/>
+  <path d="M44.5 45v4" stroke="#244b67" stroke-width="3" stroke-linecap="round"/>
+</svg>
