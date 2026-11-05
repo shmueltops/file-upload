@@ -30,7 +30,7 @@ export async function resolvePath(
   for (const name of path.split('/')) {
     let row: StoredFolder | null = await first(
       env.DB,
-      'SELECT * FROM folders WHERE user_id=? AND parent_id IS ? AND name_key=? AND deleted_at IS NULL',
+      'SELECT * FROM folders WHERE user_id=? AND parent_id IS ? AND name_key=? AND deleted_at IS NULL AND delete_requested_at IS NULL',
       userId,
       parent,
       nameKey(name),
@@ -55,7 +55,7 @@ export async function resolvePath(
       );
       row = await first(
         env.DB,
-        'SELECT * FROM folders WHERE user_id=? AND parent_id IS ? AND name_key=? AND deleted_at IS NULL',
+        'SELECT * FROM folders WHERE user_id=? AND parent_id IS ? AND name_key=? AND deleted_at IS NULL AND delete_requested_at IS NULL',
         userId,
         parent,
         nameKey(name),

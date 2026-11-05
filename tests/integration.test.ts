@@ -372,18 +372,69 @@ describe('processing and cleanup', () => {
     expect(updated.status).toBe('failed');
     expect(updated.scan_attempt_count).toBe(0);
   });
-  it('revokes immediately, preserves names until physical cleanup, then releases them', async () => {
+  it('releases names immediately and never lets old cleanup remove a replacement file', async () => {
     const f = await staged('delete-me.txt');
     await processFile(env, f.id, undefined, () => 1);
     await requestDelete(env, userId, f.id);
     expect((await request(`/files/${f.id}/content`, 'GET', undefined, userCookie)).status).toBe(
       404,
     );
-    await expect(staged('DELETE-ME.txt')).rejects.toThrow(/already exists/);
+    const replacement = await staged('DELETE-ME.txt', 'replacement content');
+    expect(replacement.id).not.toBe(f.id);
+    expect((await getFile(env, f.id))!.deleted_at).toBeNull();
+    await processFile(env, replacement.id, undefined, () => 1);
     await run(env.DB, 'UPDATE files SET cleanup_after=0 WHERE id=?', f.id);
     await cleanupFile(env, f.id);
     expect((await getFile(env, f.id))!.status).toBe('deleted');
-    expect(await staged('delete-me.txt')).toBeTruthy();
+    const download = await request(
+      `/files/${replacement.id}/content`,
+      'GET',
+      undefined,
+      userCookie,
+    );
+    expect(await download.text()).toBe('replacement content');
+    await expect(staged('delete-me.txt')).rejects.toThrow(/already exists/);
+  });
+  it('immediately reuses an infected filename and isolates delayed events and recursive folder cleanup', async () => {
+    const folder = (await resolvePath(env, userId, 'Recreate/Nested', true))!;
+    const id = crypto.randomUUID();
+    const upload = await startUpload(env, userId, {
+      clientUploadId: id,
+      filename: 'document.pdf',
+      size: 3,
+      mimeType: 'application/pdf',
+      folderPath: 'Recreate/Nested',
+    });
+    const old = (await getFile(env, id))!;
+    await env.QUARANTINE.put(old.quarantine_key, 'old', {
+      customMetadata: { 'file-id': id, generation: upload.generation },
+    });
+    await processFile(env, id, upload.generation, () => 0);
+    expect((await getFile(env, id))!.status).toBe('infected');
+    await requestDelete(env, userId, id);
+    const next = await startUpload(env, userId, {
+      clientUploadId: crypto.randomUUID(),
+      filename: 'document.pdf',
+      size: 3,
+      mimeType: 'application/pdf',
+      folderPath: 'Recreate/Nested',
+    });
+    expect(next.id).not.toBe(id);
+    await requestFolderDelete(env, userId, (await resolvePath(env, userId, 'Recreate'))!);
+    const newFolder = await resolvePath(env, userId, 'Recreate/Nested', true);
+    expect(newFolder).not.toBe(folder);
+    const newest = await startUpload(env, userId, {
+      clientUploadId: crypto.randomUUID(),
+      filename: 'document.pdf',
+      size: 3,
+      mimeType: 'application/pdf',
+      folderPath: 'Recreate/Nested',
+    });
+    await run(env.DB, 'UPDATE files SET cleanup_after=0 WHERE id IN (?,?)', id, next.id);
+    await processFile(env, id, upload.generation);
+    await cleanupFile(env, next.id);
+    expect((await getFile(env, newest.id))!.delete_requested_at).toBeNull();
+    expect(await resolvePath(env, userId, 'Recreate/Nested')).toBe(newFolder);
   });
   it('atomically rolls back related D1 mutations', async () => {
     const id = crypto.randomUUID();

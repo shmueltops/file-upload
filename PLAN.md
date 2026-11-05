@@ -133,14 +133,14 @@ Use normalized application-generated keys; SQLite's default `NOCASE` is insuffic
 ```sql
 CREATE UNIQUE INDEX folders_active_name
 ON folders(user_id, COALESCE(parent_id, ''), name_key)
-WHERE deleted_at IS NULL;
+WHERE deleted_at IS NULL AND delete_requested_at IS NULL;
 
 CREATE UNIQUE INDEX files_active_name
 ON files(user_id, COALESCE(folder_id, ''), filename_key)
-WHERE deleted_at IS NULL;
+WHERE deleted_at IS NULL AND delete_requested_at IS NULL;
 ```
 
-The empty-string sentinel cannot be a valid UUID. It makes uniqueness work at root, where ordinary nullable composite indexes would allow duplicates. Failed, infected, and deleting files keep their names reserved until physical deletion succeeds.
+The empty-string sentinel cannot be a valid UUID. It makes uniqueness work at root, where ordinary nullable composite indexes would allow duplicates. Failed and infected files reserve their names until the user requests deletion. Deletion immediately releases the name; physical cleanup remains isolated to the old record's generated object keys.
 
 Additional indexes: folders by `(user_id, parent_id)`, files by `(user_id, folder_id, created_at, id)`, files by `(status, updated_at, id)`, files by lease/deletion state, and attempts by `(file_id, attempt_number)`. Add indexes only for actual listing and monitoring queries.
 
@@ -309,7 +309,7 @@ Prove cross-bucket conditional CopyObject at 3 GB early. If the deployed operati
 3. Enqueue an idempotent cleanup message. Abort any multipart session and delete both bucket prefixes for that file, including superseded generations and abandoned claim-specific promotion objects.
 4. Track the latest signed URL expiry and any in-flight processing lease. Do not finalize deletion while a known writer could still commit. Use delayed queue retries and a final verification pass after the write window closes.
 5. Handle late quarantine object-create events for cancelled, obsolete, and deleted generations as cleanup only, including replay after the original object was removed. They must never restart scanning or restore access.
-6. Set `deleted_at` only after required physical cleanup succeeds; keep the row and attempts. A cleanup failure leaves the name reserved and retries through Queues/DLQ.
+6. Set `deleted_at` only after required physical cleanup succeeds; keep the row and attempts. Names are released immediately when `delete_requested_at` is set, independently of cleanup retries through Queues/DLQ. Old cleanup and late events cannot touch a replacement's distinct file ID/object keys.
 
 Revoking a URL already issued to R2 is not immediate. Prove the cancellation/write/cleanup ordering under in-flight PUT and CopyObject races in the initial storage spike, including any required drain delay. Do not claim that deleting a D1 row revokes a signed PUT.
 
@@ -408,7 +408,7 @@ Tests should cover behavior and failure boundaries rather than duplicate impleme
 - Authentication: forced rotation, wrong-role rejection, cross-user file/folder IDs, logout/session invalidation, CSRF, and no quarantine download even for admins.
 - Uploads: 0 bytes, just below/at 20 MiB, uneven final part, 3 GB boundary and above-limit rejection, URL expiry, falsified size, lost responses, part reconciliation, retry exhaustion, and no overwrite through signed URL replay.
 - Processing: every fake-scanner branch, deterministic randomness, maximum three invocations, interrupted attempt audit, promotion retries without rescanning, source mismatch, and crash after copy/before publication.
-- Deletion: before completion, during scan/copy, cleanup failure, delayed event after deletion, name reuse only after cleanup, and nested-folder cancellation.
+- Deletion: before completion, during scan/copy, cleanup failure, delayed event after deletion, immediate name reuse without old cleanup affecting a replacement, and nested-folder cancellation.
 - UI: files remain sequential, parts stay at concurrency four, progress never decreases, ETA pauses offline, routes preserve uploads, refresh has no resume, folder collection reads all entries, and terminal polling stops.
 
 Definition of done: all assignment flows work in staging, including the full-size path; exactly four application tables remain; clean downloads require current authorization and a recorded approved source; operational failures are visible and recoverable; the initial admin password and all other credentials stay out of source control.

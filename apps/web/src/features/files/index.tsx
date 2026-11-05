@@ -525,7 +525,8 @@ function FolderFileDialog({
               {action.type === 'delete-folder'
                 ? 'All nested files and folders will also be deleted. '
                 : ''}
-              Access stops immediately. Storage cleanup may take a few minutes.
+              Access stops immediately. Storage cleanup may take a few minutes. You can reuse the
+              name immediately.
             </p>
             {action.type === 'delete-folder' && (
               <ul className="delete-preview">

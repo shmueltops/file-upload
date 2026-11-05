@@ -32,7 +32,7 @@ Read `README.md`, `PLAN.md`, and `OPERATIONS.md`. Preserve the agreed stack and 
 - Worker S3 bundling must resolve the browser SDK consistently and provide its XML DOMParser dependency. Keep production bundle/live tests for changes to that integration.
 - File transfer queue is global above route changes, files sequential, parts concurrent at four with 16 MiB parts. Never buffer a whole large file.
 - Pending/unfinished uploads are visible only in the upload panel and admin history, not My files. The list requires confirmed upload completion. A refresh does not resume transfers.
-- Deletion blocks access immediately, but names remain reserved until storage cleanup finishes. Preserve file records and scan history.
+- Deletion blocks access and releases file/folder names immediately. Active-name indexes exclude delete_requested_at as well as deleted_at. Preserve historical records and scan history; cleanup and late events must operate only on old file IDs/generations, never a replacement's name or path.
 - Unicode validation/case-folding is shared by browser and backend; enforce duplicate names through database indexes, including root.
 
 ## Database and configuration

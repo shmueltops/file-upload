@@ -8,7 +8,7 @@ Both Workers emit structured logs with file/message identifiers. Cloudflare logs
 
 The processing queue has batches of at most five messages, ten delivery retries, and a dead-letter queue. A duplicate under a valid lease is delayed until the lease deadline. A recovered interrupted scan consumes its reserved attempt; a persisted clean verdict resumes promotion without scanning again.
 
-Files waiting for storage cleanup may remain `deleting` for several minutes. During an interrupted processing invocation, the conservative lease can extend this to 16 minutes. Their filenames remain reserved. Repeat DELETE if an API response indicated that queue enqueueing failed; deletion is idempotent.
+Files waiting for storage cleanup may remain `deleting` in admin history for several minutes. During an interrupted processing invocation, the conservative lease can extend this to 16 minutes. Their names are released as soon as deletion is requested; replacements have different IDs/object keys and are isolated from the old cleanup. Repeat DELETE if an API response indicated that queue enqueueing failed; deletion is idempotent.
 
 Incomplete multipart sessions are aborted by R2 lifecycle after one day. Ordinary objects and D1 upload records are not expired by that rule. General orphan reconciliation is intentionally manual.
 

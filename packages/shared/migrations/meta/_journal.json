@@ -8,6 +8,13 @@
       "when": 1793857132525,
       "tag": "0000_mushy_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793887156243,
+      "tag": "0001_release_names_on_delete",
+      "breakpoints": true
     }
   ]
 }

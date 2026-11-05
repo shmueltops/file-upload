@@ -51,7 +51,7 @@ export const folders = sqliteTable(
     foreignKey({ columns: [t.user_id, t.parent_id], foreignColumns: [t.user_id, t.id] }),
     uniqueIndex('folders_active_name')
       .on(t.user_id, sql`coalesce(${t.parent_id}, '')`, t.name_key)
-      .where(sql`${t.deleted_at} IS NULL`),
+      .where(sql`${t.deleted_at} IS NULL AND ${t.delete_requested_at} IS NULL`),
     index('folders_parent').on(t.user_id, t.parent_id),
   ],
 );
@@ -121,7 +121,7 @@ export const files = sqliteTable(
     }),
     uniqueIndex('files_active_name')
       .on(t.user_id, sql`coalesce(${t.folder_id}, '')`, t.filename_key)
-      .where(sql`${t.deleted_at} IS NULL`),
+      .where(sql`${t.deleted_at} IS NULL AND ${t.delete_requested_at} IS NULL`),
     index('files_folder').on(t.user_id, t.folder_id, t.created_at, t.id),
     index('files_status').on(t.status, t.updated_at),
     index('files_lease').on(t.lease_expires_at),
