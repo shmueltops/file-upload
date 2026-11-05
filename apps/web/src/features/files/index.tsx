@@ -23,7 +23,7 @@ import { validateName } from '../../../../../packages/shared/src/paths';
 import { api, bytes, changed, date, json } from '../../lib/api';
 import { collectDrop, collectFiles, useUploads, useUploadTasks } from '../uploads';
 import { FolderTree } from '../folders';
-import { Modal, StatusBadge } from '../../components';
+import { LoadingIndicator, Modal, StatusBadge } from '../../components';
 
 type Action =
   | { type: 'create' }
@@ -358,7 +358,7 @@ export function FileManager() {
         </div>
         {loading ? (
           <div className="empty-state">
-            <p>Loading your files…</p>
+            <LoadingIndicator>Loading your files…</LoadingIndicator>
           </div>
         ) : (
           !selectedFiles.length &&

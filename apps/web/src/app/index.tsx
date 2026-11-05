@@ -5,6 +5,7 @@ import { UploadProvider, useUploadTasks } from '../features/uploads';
 import { FileManager } from '../features/files';
 import { AdminJobs, AdminUsers } from '../features/admin';
 import { useState } from 'react';
+import { LoadingIndicator } from '../components';
 export function App() {
   return (
     <BrowserRouter>
@@ -20,7 +21,7 @@ function Gate() {
     return (
       <div className="loading-screen">
         <FolderLock size={36} />
-        <p>Opening your workspace…</p>
+        <LoadingIndicator>Opening your workspace…</LoadingIndicator>
       </div>
     );
   if (!user || user.must_change_password) return <SignIn key={user?.id ?? 'login'} />;

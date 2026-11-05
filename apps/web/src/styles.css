@@ -643,6 +643,27 @@ td strong {
   gap: 20px;
   color: #7190a5;
 }
+.loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #507c98;
+}
+.loading-spinner {
+  flex: none;
+  animation: loading-turn 1s linear infinite;
+}
+@keyframes loading-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+  }
+}
 .modal {
   width: min(530px, calc(100% - 30px));
   border: 1px solid #dfe6eb;

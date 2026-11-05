@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldAlert,
+  LoaderCircle,
 } from 'lucide-react';
 import { UploadQueue } from './upload-queue';
 import { api, bytes, timeRemaining } from '../../lib/api';
@@ -146,6 +147,8 @@ function UploadPanel() {
                   {t.state === 'transferred' ? (
                     ['infected', 'failed'].includes(t.backendStatus ?? '') ? (
                       <ShieldAlert size={17} className="error" />
+                    ) : !['done', 'deleted'].includes(t.backendStatus ?? '') ? (
+                      <LoaderCircle size={17} className="loading-spinner" aria-hidden="true" />
                     ) : (
                       <Check size={17} className="success" />
                     )
@@ -174,6 +177,7 @@ function UploadPanel() {
                 </div>
                 <div className="split">
                   <small
+                    role={t.state === 'transferred' ? 'status' : undefined}
                     className={
                       t.state === 'failed' || ['failed', 'infected'].includes(t.backendStatus ?? '')
                         ? 'error'
