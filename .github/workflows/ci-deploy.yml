@@ -1,0 +1,86 @@
+name: Verify and deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: file-vault-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm install --global pnpm@10.15.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm check:secrets
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Browser acceptance tests
+        shell: bash
+        run: |
+          pnpm dev > /tmp/file-vault-dev.log 2>&1 &
+          DEV_PID=$!
+          trap 'kill "$DEV_PID" || true' EXIT
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:5173/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          pnpm test:e2e
+
+  deploy:
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
+      ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL || secrets.ADMIN_EMAIL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME || secrets.D1_DATABASE_NAME || 'file-vault' }}
+      APP_ORIGIN: ${{ vars.APP_ORIGIN || secrets.APP_ORIGIN }}
+      R2_ENDPOINT: ${{ vars.R2_ENDPOINT || secrets.R2_ENDPOINT }}
+      QUARANTINE_BUCKET: ${{ vars.QUARANTINE_BUCKET || secrets.QUARANTINE_BUCKET || 'file-vault-quarantine' }}
+      CLEAN_BUCKET: ${{ vars.CLEAN_BUCKET || secrets.CLEAN_BUCKET || 'file-vault-clean' }}
+      PROCESSING_QUEUE: ${{ vars.PROCESSING_QUEUE || secrets.PROCESSING_QUEUE || 'file-vault-processing' }}
+      DEAD_LETTER_QUEUE: ${{ vars.DEAD_LETTER_QUEUE || secrets.DEAD_LETTER_QUEUE || 'file-vault-dead-letter' }}
+      API_WORKER_NAME: ${{ vars.API_WORKER_NAME || secrets.API_WORKER_NAME || 'file-vault-api' }}
+      CONSUMER_WORKER_NAME: ${{ vars.CONSUMER_WORKER_NAME || secrets.CONSUMER_WORKER_NAME || 'file-vault-consumer' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm install --global pnpm@10.15.0
+      - run: pnpm install --frozen-lockfile
+      - name: Validate required credentials
+        run: node --input-type=module -e "for (const key of ['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_API_TOKEN','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY','SESSION_SECRET','ADMIN_EMAIL','ADMIN_INITIAL_PASSWORD']) if (!process.env[key]) throw new Error('Missing GitHub secret/variable '+key)"
+      - run: pnpm cloudflare:prepare
+      - run: pnpm run deploy
+      - run: pnpm bootstrap
+      - name: Check published health endpoint
+        run: node --import tsx scripts/check-health.ts

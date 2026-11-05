@@ -1,0 +1,9 @@
+{
+  "name": "@vault/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contracts": "./src/contracts/index.ts",
+    "./paths": "./src/paths/index.ts"
+  }
+}
