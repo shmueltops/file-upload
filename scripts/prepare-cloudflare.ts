@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { root } from './build';
 import { loadEnvironment, requireVariables, cloudflare } from './cloudflare-api';
+import { ensureUploadNotifications } from './ensure-upload-notifications';
 loadEnvironment();
 requireVariables('CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN');
 const account = process.env.CLOUDFLARE_ACCOUNT_ID!;
@@ -44,18 +45,8 @@ for (const name of [names.jobs, names.dlq])
   if (!queues.some((q) => q.queue_name === name))
     queues.push(await cloudflare(`${base}/queues`, 'POST', { queue_name: name }));
 const queueId = queues.find((q) => q.queue_name === names.jobs)!.queue_id;
-await cloudflare(
+await ensureUploadNotifications(
   `${base}/event_notifications/r2/${names.quarantine}/configuration/queues/${queueId}`,
-  'PUT',
-  {
-    rules: [
-      {
-        prefix: 'uploads/',
-        actions: ['PutObject', 'CompleteMultipartUpload'],
-        description: 'Scan completed file uploads',
-      },
-    ],
-  },
 );
 const subdomain = await cloudflare<{ subdomain: string }>(`${base}/workers/subdomain`);
 const origin =

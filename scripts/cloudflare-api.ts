@@ -18,6 +18,16 @@ export function requireVariables(...names: string[]) {
     if (!process.env[name])
       throw new Error(`Set ${name} in the ignored .env or process environment.`);
 }
+export class CloudflareApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly codes: number[],
+  ) {
+    super(message);
+    this.name = 'CloudflareApiError';
+  }
+}
 export async function cloudflare<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   requireVariables('CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN');
   const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
@@ -31,11 +41,13 @@ export async function cloudflare<T>(path: string, method = 'GET', body?: unknown
   const data = (await response.json()) as {
     success: boolean;
     result: T;
-    errors?: { message: string }[];
+    errors?: { code: number; message: string }[];
   };
   if (!response.ok || !data.success)
-    throw new Error(
+    throw new CloudflareApiError(
       `Cloudflare ${method} ${path} failed (${response.status}): ${data.errors?.map((e) => e.message).join('; ') ?? 'unknown error'}`,
+      response.status,
+      data.errors?.map((e) => e.code) ?? [],
     );
   return data.result;
 }

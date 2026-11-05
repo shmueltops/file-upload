@@ -81,15 +81,20 @@ Use **`pnpm run deploy`**; `pnpm deploy` is a different built-in pnpm command.
 
 Preparation creates/reuses the named resources, configures native R2 upload events, CORS, and one-day incomplete-multipart lifecycle rules, and determines the Workers domain. Deployment applies committed migrations, builds/deploys the consumer first, then the API and React assets. Runtime secrets are uploaded separately from tracked configuration; the deployment API token is never a Worker binding.
 
+Preparation can be rerun for an existing deployment. It reads the processing queue's R2 notification rules and reuses matching coverage, adding only missing upload events. R2's notification PUT appends rules, so blindly submitting the same rule again causes an overlap error.
+
 Cloudflare configuration lives in each Worker's `cloudflare.config.ts`. The Vite plugin beta matches the new `cf` configuration format. Worker bundling explicitly resolves browser/Workers AWS SDK modules; this is necessary to avoid mixing Node runtime configuration with browser SDK dependencies.
 
 ```sh
 pnpm verify:r2
 pnpm verify:r2 --large
+pnpm verify:large-copy
 pnpm verify:live
 ```
 
 R2 verification checks signed create-once PUTs, replay prevention, conditional cross-bucket copy, and CORS. `--large` additionally transfers and copies exactly 3 GB, then deletes only its own verification objects. Live verification exercises deployed Hono authentication, native object events, Queues, scanning, multipart completion, downloads, and deletion using a dedicated QA account. Its generated credentials stay in `.local/live-verification.json`.
+
+`verify:large-copy` assembles a 3 GB verification object server-side from the dedicated QA account's approved fixture, then verifies conditional cross-bucket CopyObject and cleans its own objects. This checks real R2 promotion without retransmitting 3 GB from the local machine; it does not test a full-size browser upload over the public network.
 
 ## Set up a clone and GitHub Actions
 
