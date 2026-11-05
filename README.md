@@ -79,6 +79,8 @@ pnpm bootstrap
 
 Use **`pnpm run deploy`**; `pnpm deploy` is a different built-in pnpm command.
 
+The public Worker defaults to `file-vault`, serving both the frontend and API at `https://file-vault.<your-workers-subdomain>.workers.dev`. To change the published name, update `API_WORKER_NAME` and `APP_ORIGIN` together in `.env` and GitHub Actions Variables, then deploy. Preparation updates upload CORS for the new origin. Keep the same database, bucket, queue, and session-secret settings to retain existing data and users. Users sign in again on the new hostname. A renamed deployment does not delete the old Worker; retire it separately once existing links are no longer needed.
+
 Preparation creates/reuses the named resources, configures native R2 upload events, CORS, and one-day incomplete-multipart lifecycle rules, and determines the Workers domain. Deployment applies committed migrations, builds/deploys the consumer first, then the API and React assets. Runtime secrets are uploaded separately from tracked configuration; the deployment API token is never a Worker binding.
 
 Preparation can be rerun for an existing deployment. It reads the processing queue's R2 notification rules and reuses matching coverage, adding only missing upload events. R2's notification PUT appends rules, so blindly submitting the same rule again causes an overlap error.

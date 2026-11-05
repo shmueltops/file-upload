@@ -2,7 +2,7 @@ import { bindings, defineConfig } from 'cf/config';
 import { cloudflareEnvironment, observability } from '../../scripts/cloudflare-bindings.ts';
 export default defineConfig({
   worker: {
-    name: process.env.API_WORKER_NAME || 'file-vault-api',
+    name: process.env.API_WORKER_NAME || 'file-vault',
     entrypoint: './src/index.ts',
     compatibilityDate: '2026-11-05',
     compatibilityFlags: ['nodejs_compat'],

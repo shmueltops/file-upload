@@ -51,7 +51,7 @@ await ensureUploadNotifications(
 const subdomain = await cloudflare<{ subdomain: string }>(`${base}/workers/subdomain`);
 const origin =
   process.env.APP_ORIGIN ||
-  `https://${process.env.API_WORKER_NAME || 'file-vault-api'}.${subdomain.subdomain}.workers.dev`;
+  `https://${process.env.API_WORKER_NAME || 'file-vault'}.${subdomain.subdomain}.workers.dev`;
 await cloudflare(`${base}/r2/buckets/${names.quarantine}/cors`, 'PUT', {
   rules: [
     {

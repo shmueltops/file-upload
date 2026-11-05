@@ -66,7 +66,7 @@ jobs:
       CLEAN_BUCKET: ${{ vars.CLEAN_BUCKET || secrets.CLEAN_BUCKET || 'file-vault-clean' }}
       PROCESSING_QUEUE: ${{ vars.PROCESSING_QUEUE || secrets.PROCESSING_QUEUE || 'file-vault-processing' }}
       DEAD_LETTER_QUEUE: ${{ vars.DEAD_LETTER_QUEUE || secrets.DEAD_LETTER_QUEUE || 'file-vault-dead-letter' }}
-      API_WORKER_NAME: ${{ vars.API_WORKER_NAME || secrets.API_WORKER_NAME || 'file-vault-api' }}
+      API_WORKER_NAME: ${{ vars.API_WORKER_NAME || secrets.API_WORKER_NAME || 'file-vault' }}
       CONSUMER_WORKER_NAME: ${{ vars.CONSUMER_WORKER_NAME || secrets.CONSUMER_WORKER_NAME || 'file-vault-consumer' }}
     steps:
       - uses: actions/checkout@v6
