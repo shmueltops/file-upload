@@ -9,6 +9,7 @@ import {
 } from '../../../../../packages/shared/src/contracts/previews';
 import { LoadingIndicator, Modal } from '../../components';
 import { bytes } from '../../lib/api';
+import { SESSION_EXPIRED_EVENT } from '../../lib/session';
 
 export default function FilePreview({ file, close }: { file: FileRecord; close: () => void }) {
   const format = filePreview(file.filename);
@@ -31,6 +32,7 @@ export default function FilePreview({ file, close }: { file: FileRecord; close: 
     void fetch(url, { credentials: 'same-origin', signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) {
+          if (response.status === 401) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
           const body = (await response.json().catch(() => ({}))) as { error?: string };
           throw new Error(body.error || 'This file could not be opened. Try again or download it.');
         }

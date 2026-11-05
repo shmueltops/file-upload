@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { setCookie, deleteCookie } from 'hono/cookie';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { loginInput, passwordInput } from '../../../../packages/shared/src/contracts';
 import { database } from '../../../../packages/shared/src/db/client';
 import { users } from '../../../../packages/shared/src/db/schema';
@@ -48,11 +48,18 @@ auth.post('/login', async (c) => {
 auth.get('/me', (c) => c.json({ user: publicUser(c.get('user')) }));
 auth.post('/logout', async (c) => {
   const user = c.get('user');
-  await database(c.env.DB)
-    .update(users)
-    .set({ session_version: user.session_version + 1, updated_at: Date.now() })
-    .where(eq(users.id, user.id));
-  deleteCookie(c, cookieName(c.env), { path: '/' });
+  // __Host- cookie deletion must carry the same Secure and Path requirements as creation.
+  deleteCookie(c, cookieName(c.env), {
+    path: '/',
+    secure: c.env.LOCAL_MODE !== 'true',
+    httpOnly: true,
+    sameSite: 'Lax',
+  });
+  if (user)
+    await database(c.env.DB)
+      .update(users)
+      .set({ session_version: sql`${users.session_version} + 1`, updated_at: Date.now() })
+      .where(eq(users.id, user.id));
   return c.json({ ok: true });
 });
 auth.post('/change-password', async (c) => {

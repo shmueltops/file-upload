@@ -22,6 +22,7 @@ Read `README.md`, `PLAN.md`, and `OPERATIONS.md`. Preserve the agreed stack and 
 ## Invariants
 
 - Exactly four application tables: users, folders, files, scan_attempts. No jobs or sessions table.
+- Authentication stays in HttpOnly cookies. Logout must use Secure when deleting production __Host- cookies, accept expired/absent sessions, and clear React state immediately even if the request fails. Preserve the non-secret signed-out marker and authenticated-401 handling; never store credentials in localStorage or treat a bad login/current password as an expired session.
 - Both Workers reuse the shared services. D1 claim/state updates require generation and claim-token guards; no read-then-write claims.
 - A clean verdict belongs to an immutable source ETag. Promotion retries must not re-run the scanner or replace the approved source.
 - File previews use the authenticated clean-content route with `preview=1` and an extension allowlist shared with the UI. Keep HTML/SVG download-only, text/Markdown bounded at 2 MiB, Markdown raw HTML/remote images disabled, and media streamed with Range support. The PDF response permits same-origin object embedding for the browser's native viewer.

@@ -1,3 +1,5 @@
+import { SESSION_EXPIRED_EVENT } from './session';
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -16,7 +18,14 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
       ...options.headers,
     },
   });
-  const data = (await response.json()) as { error?: string; code?: string };
+  const data = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
+  if (
+    response.status === 401 &&
+    path !== '/auth/logout' &&
+    (data.code === 'unauthorized' || !['/auth/login', '/auth/change-password'].includes(path)) &&
+    typeof window !== 'undefined'
+  )
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
   if (!response.ok)
     throw new ApiError(response.status, data.error ?? 'The request failed.', data.code);
   return data as T;

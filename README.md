@@ -157,5 +157,6 @@ Drizzle Kit 0.31.11 incorrectly split the `COALESCE` expressions in generated un
 - Deletion revokes new access immediately. Physical cleanup waits for issued URL/processing write windows; only completed deletion releases the name. An already-started download cannot be recalled.
 - Folder deletion is recursive. Folder changes in another tab are resolved when each path-based request is made; an upload batch does not lock a permanent tree snapshot.
 - Sessions use secure HttpOnly cookies. Logout invalidates all sessions for that account. Public registration, cross-refresh upload resume, WebSockets, cron reconciliation, and a separate jobs table are intentionally absent.
+- Signing out clears React's user/upload state immediately, even when the server is unavailable. A non-secret browser logout marker prevents a surviving cookie from restoring the UI after refresh and synchronizes sign-out across tabs; successful sign-in clears that marker. Authenticated API 401 responses also return the UI to sign-in. The server expires the cookie and invalidates sessions; frontend JavaScript cannot delete an HttpOnly cookie itself.
 
 See [PLAN.md](PLAN.md) for the architecture and [OPERATIONS.md](OPERATIONS.md) for recovery guidance.

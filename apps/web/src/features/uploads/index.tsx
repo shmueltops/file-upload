@@ -23,6 +23,7 @@ export { collectFiles, collectDrop } from './read-directory';
 const UploadContext = createContext<UploadQueue | null>(null);
 export function UploadProvider({ children }: { children: ReactNode }) {
   const [queue] = useState(() => new UploadQueue());
+  useEffect(() => () => queue.dispose(), [queue]);
   const tasks = useSyncExternalStore(queue.subscribe, queue.snapshot);
   const active = tasks.some((t) => ['queued', 'uploading'].includes(t.state));
   const processingIds = tasks

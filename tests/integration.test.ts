@@ -13,6 +13,11 @@ import {
 } from '../packages/shared/src/services/files';
 import { run, first, all } from '../packages/shared/src/db/client';
 import type { ServiceBindings } from '../packages/shared/src/services/types';
+import { Hono } from 'hono';
+import { auth } from '../apps/api/src/routes/auth';
+import { authenticate, csrf, type ApiEnv } from '../apps/api/src/middleware';
+import { sessionToken, sessionUser } from '../packages/shared/src/services/users';
+import type { StoredUser } from '../packages/shared/src/db/schema';
 let mf: Miniflare, env: ServiceBindings, adminCookie: string, userCookie: string;
 const origin = 'http://localhost',
   adminId = crypto.randomUUID(),
@@ -72,6 +77,52 @@ async function staged(filename: string, body = 'test data') {
   return file;
 }
 describe('runtime authorization and D1 constraints', () => {
+  it('clears production __Host- cookies and accepts repeated or anonymous logout', async () => {
+    const id = crypto.randomUUID();
+    await run(
+      env.DB,
+      "INSERT INTO users(id,email,email_key,password_hash,role,must_change_password,created_at,updated_at) SELECT ?,?,?,password_hash,'user',0,?,? FROM users WHERE id=?",
+      id,
+      `${id}@test.invalid`,
+      `${id}@test.invalid`,
+      Date.now(),
+      Date.now(),
+      userId,
+    );
+    const user = (await first<StoredUser>(env.DB, 'SELECT * FROM users WHERE id=?', id))!;
+    const token = await sessionToken(env, user);
+    const app = new Hono<ApiEnv>();
+    app.use('*', csrf, authenticate);
+    app.route('/auth', auth);
+    const bindings = { ...env, LOCAL_MODE: 'false', APP_ORIGIN: 'https://vault.test.invalid' };
+    for (const cookie of [
+      `__Host-vault_session=${token}`,
+      `__Host-vault_session=${token}`,
+      '__Host-vault_session=invalid',
+      '',
+    ]) {
+      const response = await app.request(
+        'https://vault.test.invalid/auth/logout',
+        {
+          method: 'POST',
+          headers: {
+            Origin: bindings.APP_ORIGIN,
+            'Content-Type': 'application/json',
+            Cookie: cookie,
+          },
+          body: '{}',
+        },
+        bindings,
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Set-Cookie')).toMatch(/^__Host-vault_session=;/);
+      expect(response.headers.get('Set-Cookie')).toContain('Secure');
+      expect(response.headers.get('Set-Cookie')).toContain('HttpOnly');
+      expect(response.headers.get('Set-Cookie')).toContain('Path=/');
+      expect(response.headers.get('Set-Cookie')).toContain('Max-Age=0');
+    }
+    expect(await sessionUser(env, token)).toBeNull();
+  });
   it('rejects anonymous, foreign-origin, and regular-user admin calls', async () => {
     expect((await request('/files', 'GET', undefined, '')).status).toBe(401);
     expect((await request('/admin/users', 'GET', undefined, userCookie)).status).toBe(403);

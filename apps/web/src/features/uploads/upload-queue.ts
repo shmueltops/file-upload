@@ -30,6 +30,7 @@ export class UploadQueue {
   private running = false;
   private controller: AbortController | null = null;
   private current: string | null = null;
+  private disposed = false;
   subscribe = (fn: () => void) => {
     this.listeners.add(fn);
     return () => {
@@ -37,12 +38,20 @@ export class UploadQueue {
     };
   };
   snapshot = () => this.tasks;
+  dispose() {
+    this.disposed = true;
+    this.controller?.abort();
+    this.tasks = [];
+    this.listeners.clear();
+  }
   private emit() {
     this.tasks = [...this.tasks];
     this.listeners.forEach((fn) => fn());
   }
   async add(selection: Selection) {
+    if (this.disposed) return;
     await api('/folders/ensure-paths', json('POST', { paths: selection.paths }));
+    if (this.disposed) return;
     const batch = crypto.randomUUID();
     this.tasks.push(
       ...selection.files.map(({ file, folderPath }) => ({
@@ -109,7 +118,7 @@ export class UploadQueue {
     if (this.running) return;
     this.running = true;
     try {
-      while (true) {
+      while (!this.disposed) {
         const task = this.tasks.find((t) => t.state === 'queued');
         if (!task) break;
         this.current = task.id;

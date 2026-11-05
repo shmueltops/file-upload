@@ -14,7 +14,11 @@ export const authenticate = createMiddleware<ApiEnv>(async (c, next) => {
   const path = c.req.path.replace(/^\/api/, '');
   if (path === '/auth/login' || path === '/health' || path.startsWith('/__local/')) return next();
   const user = await sessionUser(c.env, getCookie(c, cookieName(c.env)));
-  if (!user) throw new AppError(401, 'Sign in to continue.', 'unauthorized');
+  // Logout must also clear expired, invalid, or already-revoked cookies.
+  if (!user) {
+    if (path === '/auth/logout') return next();
+    throw new AppError(401, 'Sign in to continue.', 'unauthorized');
+  }
   c.set('user', user);
   if (
     user.must_change_password &&
