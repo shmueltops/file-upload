@@ -4,6 +4,8 @@ A private file manager built with React, TypeScript, Hono, Cloudflare Workers, R
 
 The scanner intentionally implements the assignment's **simulation**. It checks names for `virus` and `communism`, then uses a 10% random infected outcome. It does not inspect file contents for real malware.
 
+Simulated scans take 10 seconds for files up to 1 KB (1,000 bytes), increasing linearly to 30 seconds at 3 GB (3,000,000,000 bytes). Timing uses the verified R2 size, keeps the file in Scanning, and is recorded in the attempt history. Promotion retries reuse the verdict without another scan or delay.
+
 ## Run locally
 
 Requirements: Node.js 24.18+ and pnpm 10.15+. The currently pinned beta Cloudflare CLI advertises a newer Node patch baseline; use Node 24.22+ for deployment environments when available.

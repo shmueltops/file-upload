@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import type { Miniflare } from 'miniflare';
 import { buildWorkers } from '../scripts/build';
 import { localRuntime, migrateLocal } from '../scripts/runtime';
@@ -18,6 +18,17 @@ import { auth } from '../apps/api/src/routes/auth';
 import { authenticate, csrf, type ApiEnv } from '../apps/api/src/middleware';
 import { sessionToken, sessionUser } from '../packages/shared/src/services/users';
 import type { StoredUser } from '../packages/shared/src/db/schema';
+
+// State/recovery tests use the real verdict logic without wall-clock waiting.
+// Timer tests cover the delay; browser tests exercise it inside the Queue Worker.
+vi.mock('../packages/shared/src/services/scanner', async (importOriginal) => {
+  const scanner = await importOriginal<typeof import('../packages/shared/src/services/scanner')>();
+  return {
+    ...scanner,
+    scanFile: (filename: string, size: number, random?: () => number) =>
+      scanner.scanFile(filename, size, random, async () => {}),
+  };
+});
 let mf: Miniflare, env: ServiceBindings, adminCookie: string, userCookie: string;
 const origin = 'http://localhost',
   adminId = crypto.randomUUID(),

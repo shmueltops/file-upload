@@ -290,6 +290,8 @@ Implement the fake checks in this order, case-insensitively:
 
 Inject randomness in tests. Persist the attempt result and source identity before promotion; duplicate deliveries and promotion retries reuse that result instead of drawing again.
 
+User-requested simulation timing: delay the verdict for 10 seconds at 1 KB (or smaller), increasing linearly to 30 seconds at 3 GB using the verified object size. Await a timer while the existing processing claim/attempt remains active; record elapsed time in the attempt audit. Unit tests control the timer, while browser tests verify real Queue Worker timing and the visible Scanning state.
+
 ### Promotion
 
 1. Save the clean verdict and its exact source ETag, then transition to `processing`.

@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   nameKey,
   validateName,
   validatePath,
   validateFilePath,
 } from '../packages/shared/src/paths';
-import { scanFile } from '../packages/shared/src/services/scanner';
+import { scanFile, scanDurationMs } from '../packages/shared/src/services/scanner';
 import { hashPassword, checkPassword } from '../packages/shared/src/services/users';
 describe('portable paths', () => {
   it.each([
@@ -42,19 +42,41 @@ describe('portable paths', () => {
   });
 });
 describe('simulated scanner', () => {
+  const noDelay = async () => {};
+  it('scales scan time linearly from 10 seconds at 1 KB to 30 seconds at 3 GB', () => {
+    expect(scanDurationMs(0)).toBe(10_000);
+    expect(scanDurationMs(1000)).toBe(10_000);
+    expect(scanDurationMs(1_500_000_500)).toBe(20_000);
+    expect(scanDurationMs(3_000_000_000)).toBe(30_000);
+    expect(scanDurationMs(4_000_000_000)).toBe(30_000);
+  });
+  it('keeps the verdict pending until the simulated scan finishes', async () => {
+    vi.useFakeTimers();
+    try {
+      const random = vi.fn(() => 1);
+      const result = scanFile('report.txt', 1000, random);
+      await vi.advanceTimersByTimeAsync(9999);
+      expect(random).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await result).result).toBe('clean');
+      expect(random).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('prioritizes deterministic case-insensitive reasons', async () => {
-    expect(await scanFile('VIRUS-COMMUNISM.txt', () => 1)).toMatchObject({
+    expect(await scanFile('VIRUS-COMMUNISM.txt', 1000, () => 1, noDelay)).toMatchObject({
       result: 'infected',
       reason: 'virus in name',
     });
-    expect(await scanFile('Communism.txt', () => 1)).toMatchObject({
+    expect(await scanFile('Communism.txt', 1000, () => 1, noDelay)).toMatchObject({
       result: 'infected',
       reason: 'communism in name',
     });
   });
   it('samples the ten percent branch once', async () => {
-    expect((await scanFile('report.txt', () => 0.099)).reason).toBe('virus found');
-    expect((await scanFile('report.txt', () => 0.1)).result).toBe('clean');
+    expect((await scanFile('report.txt', 1000, () => 0.099, noDelay)).reason).toBe('virus found');
+    expect((await scanFile('report.txt', 1000, () => 0.1, noDelay)).result).toBe('clean');
   });
 });
 describe('password hashing', () => {
