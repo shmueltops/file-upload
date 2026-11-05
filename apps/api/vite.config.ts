@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
+  publicDir: fileURLToPath(new URL('../web/public', import.meta.url)),
   plugins: [cloudflare(), react()],
   environments: {
     ssr: {
